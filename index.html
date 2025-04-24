@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Star Citizen Starmap</title>
+    <style>
+      body { 
+        margin: 0; 
+        font-family: 'Segoe UI', Arial, sans-serif;
+        overflow: hidden;
+        background: #000;
+      }
+      canvas { 
+        display: block; 
+      }
+      #sidebar {
+        position: fixed;
+        right: 0;
+        top: 0;
+        width: 350px;
+        height: calc(100vh - 80px);
+        background: rgba(13, 20, 28, 0.9);
+        color: #ccc;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        backdrop-filter: blur(10px);
+        border-left: 1px solid rgba(72, 187, 212, 0.2);
+      }
+      #control-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 80px;
+        background: rgba(13, 20, 28, 0.95);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(72, 187, 212, 0.2);
+        display: flex;
+        padding: 0 20px;
+        align-items: center;
+        gap: 20px;
+      }
+      .control-section {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 20px;
+        border-right: 1px solid rgba(72, 187, 212, 0.2);
+        height: 100%;
+      }
+      .control-section:last-child {
+        border-right: none;
+      }
+      .section-title {
+        color: #48bbd4;
+        font-size: 14px;
+        margin-right: 15px;
+      }
+      .route-inputs {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .route-input {
+        position: relative;
+      }
+      .route-input input {
+        width: 150px;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(72, 187, 212, 0.3);
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+      }
+      .route-input input:focus {
+        outline: none;
+        border-color: #48bbd4;
+      }
+      .ship-size-select {
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(72, 187, 212, 0.3);
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+      }
+      .ship-size-select option {
+        background: rgba(13, 20, 28, 0.95);
+      }
+      .calculate-route {
+        padding: 8px 15px;
+        background: rgba(72, 187, 212, 0.2);
+        border: 1px solid rgba(72, 187, 212, 0.3);
+        border-radius: 4px;
+        color: #48bbd4;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .calculate-route:hover {
+        background: rgba(72, 187, 212, 0.3);
+        border-color: #48bbd4;
+      }
+      .display-controls {
+        display: flex;
+        gap: 10px;
+      }
+      .toggle-btn {
+        padding: 8px 15px;
+        background: rgba(72, 187, 212, 0.2);
+        border: 1px solid rgba(72, 187, 212, 0.3);
+        border-radius: 4px;
+        color: #48bbd4;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .toggle-btn:hover, .toggle-btn.active {
+        background: rgba(72, 187, 212, 0.3);
+        border-color: #48bbd4;
+      }
+      .search-container {
+        position: relative;
+        width: 200px;
+      }
+      .search-input {
+        width: 100%;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(72, 187, 212, 0.3);
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+      }
+      .search-results {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        right: 0;
+        background: rgba(13, 20, 28, 0.95);
+        border: 1px solid rgba(72, 187, 212, 0.3);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+      }
+      .system-info {
+        display: none;
+        margin-top: 20px;
+      }
+      .system-info h2 {
+        margin: 0 0 10px 0;
+        color: #48bbd4;
+        font-size: 24px;
+      }
+      .system-info p {
+        margin: 10px 0;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .controls {
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(72, 187, 212, 0.2);
+      }
+      .search-container {
+        margin-bottom: 20px;
+        position: relative;
+      }
+      .search-input {
+        width: 100%;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(72, 187, 212, 0.3);
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+      .search-input:focus {
+        outline: none;
+        border-color: #48bbd4;
+      }
+      .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: rgba(13, 20, 28, 0.95);
+        border: 1px solid rgba(72, 187, 212, 0.3);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+        z-index: 1000;
+      }
+      .search-result-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(72, 187, 212, 0.1);
+      }
+      .search-result-item:hover {
+        background: rgba(72, 187, 212, 0.2);
+      }
+      .controls button {
+        background: rgba(72, 187, 212, 0.2);
+        border: 1px solid rgba(72, 187, 212, 0.3);
+        color: #48bbd4;
+        padding: 8px 15px;
+        margin: 5px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 14px;
+        transition: all 0.2s;
+      }
+      .controls button:hover {
+        background: rgba(72, 187, 212, 0.3);
+        border-color: #48bbd4;
+      }
+      .label {
+        cursor: pointer;
+        transition: all 0.2s;
+        text-shadow: 0 0 4px rgba(0,0,0,0.8);
+        pointer-events: all !important;
+      }
+      .label:hover {
+        background-color: rgba(72, 187, 212, 0.7) !important;
+      }
+      .stat-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-top: 15px;
+      }
+      .stat-box {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 10px;
+        border-radius: 4px;
+        text-align: center;
+        border: 1px solid rgba(72, 187, 212, 0.2);
+      }
+      .stat-label {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 5px;
+      }
+      .stat-value {
+        font-size: 16px;
+        color: #48bbd4;
+      }
+      #filter-container {
+        margin-top: 15px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .filter-btn {
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 12px;
+        cursor: pointer;
+        border: 1px solid;
+        background: rgba(0, 0, 0, 0.3);
+      }
+      #minimap {
+        position: fixed;
+        left: 20px;
+        bottom: 20px;
+        width: 200px;
+        height: 200px;
+        background: rgba(13, 20, 28, 0.9);
+        border: 1px solid rgba(72, 187, 212, 0.2);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .route-type-filter {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(72, 187, 212, 0.2);
+      }
+      .route-type {
+        display: flex;
+        align-items: center;
+        margin: 5px 0;
+        font-size: 12px;
+      }
+      .route-type input {
+        margin-right: 8px;
+      }
+      .route-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+        display: inline-block;
+      }
+      .distance-info {
+        margin-top: 15px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+        border: 1px solid rgba(72, 187, 212, 0.2);
+        font-size: 14px;
+        display: none;
+      }
+      .filter-group {
+        margin-bottom: 10px;
+      }
+      .filter-group-title {
+        font-size: 12px;
+        color: #48bbd4;
+        margin-bottom: 5px;
+      }
+      .filter-btn.active {
+        background: rgba(72, 187, 212, 0.3);
+        border-color: #48bbd4;
+      }
+      #measureDistance {
+        background: rgba(189, 0, 45, 0.2);
+        border-color: rgba(189, 0, 45, 0.3);
+        color: #ff4d4d;
+      }
+      #measureDistance.active {
+        background: rgba(189, 0, 45, 0.3);
+        border-color: #ff4d4d;
+      }
+      .filter-section {
+        padding: 15px;
+        border-bottom: 1px solid rgba(72, 187, 212, 0.2);
+        margin-bottom: 20px;
+      }
+      .filter-section h3 {
+        color: #48bbd4;
+        margin: 0 0 15px 0;
+        font-size: 18px;
+      }
+      .affiliation-filters {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .system-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      .system-logo {
+        width: 64px;
+        height: 64px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+      .system-title {
+        flex: 1;
+      }
+      .system-title h2 {
+        margin: 0;
+      }
+      #filter-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 8px;
+      }
+      .toggle-btn {
+        width: 100%;
+        text-align: center;
+        padding: 6px 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="minimap"></div>
+    <div id="sidebar">
+      <div class="filter-section">
+        <h3>Filters</h3>
+        <div class="affiliation-filters">
+          <div class="section-title">Affiliations</div>
+          <div id="filter-container"></div>
+        </div>
+      </div>
+
+      <div class="system-info">
+        <div class="system-header">
+          <div class="system-logo" id="systemLogo"></div>
+          <div class="system-title">
+            <h2 id="systemName"></h2>
+            <p id="systemCode"></p>
+            <p id="systemAffiliation"></p>
+          </div>
+        </div>
+        <div class="stat-container">
+          <div class="stat-box">
+            <div class="stat-label">Population</div>
+            <div class="stat-value" id="systemPopulation">-</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Economy</div>
+            <div class="stat-value" id="systemEconomy">-</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Danger</div>
+            <div class="stat-value" id="systemDanger">-</div>
+          </div>
+        </div>
+        <p id="systemDescription"></p>
+      </div>
+    </div>
+    <div id="control-bar">
+      <div class="control-section">
+        <span class="section-title">Search</span>
+        <div class="search-container">
+          <input type="text" class="search-input" placeholder="Search system..." id="searchInput">
+          <div class="search-results" id="searchResults"></div>
+        </div>
+      </div>
+      
+      <div class="control-section">
+        <span class="section-title">Routes</span>
+        <div class="route-inputs">
+          <div class="route-input">
+            <input type="text" placeholder="From..." id="routeFrom">
+            <div class="search-results" id="routeFromResults"></div>
+          </div>
+          <div class="route-input">
+            <input type="text" placeholder="To..." id="routeTo">
+            <div class="search-results" id="routeToResults"></div>
+          </div>
+          <select class="ship-size-select" id="shipSize">
+            <option value="small">Small Ship</option>
+            <option value="medium">Medium Ship</option>
+            <option value="large">Large Ship</option>
+          </select>
+          <button class="calculate-route" id="calculateRoute">Calculate Route</button>
+        </div>
+      </div>
+      
+      <div class="control-section">
+        <span class="section-title">Display</span>
+        <div class="display-controls">
+          <button class="toggle-btn" id="toggleLabels">Labels</button>
+          <button class="toggle-btn" id="toggleRoutes">Routes</button>
+          <button class="toggle-btn" id="resetView">Reset View</button>
+          <div id="filter-container"></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html> 
